@@ -1,6 +1,12 @@
 #include <ctype.h>
 #include <conio.h>
 #include <stdio.h>
+#include <stdlib.h>
+
+struct INT2
+{
+	int x = 0, y = 0;
+};
 //地形
 enum MAP
 {
@@ -123,15 +129,15 @@ WEAPONDESC weaponDescs[] =
 {
 	//名前			  DAM WEI HIT  CRI  MIN MAX
 	{ "てつのつるぎ" , 5,  2,  100,  0,  1,  1 },
-	{ "レイピア"		, 5,  2,  100,  0,  1,  1 },
-	{ "やり"			, 5,  2,  100,  0,  1,  1 },
-	{ "ぎんのやり"	, 5,  2,  100,  0,  1,  1 },
-	{ "てやり"		, 5,  2,  100,  0,  1,  1 },
-	{ "ゆみ"			, 5,  2,  100,  0,  1,  1 },
-	{ "はがねのゆみ" , 5,  2,  100,  0,  1,  1 },
-	{ "ボウガン"		, 5,  2,  100,  0,  1,  1 },
-	{ "おの"			, 5,  2,  100,  0,  1,  1 },
-	{ "はがねのおの" , 5,  2,  100,  0,  1,  1 },
+	{ "レイピア"		, 5,  1,  100, 10,  1,  1 },
+	{ "やり"			, 8,  6,   80,  0,  1,  1 },
+	{ "ぎんのやり"	, 12, 7,   80,  0,  1,  1 },
+	{ "てやり"		, 7,  6,   70,  0,  1,  2 },
+	{ "ゆみ"			, 4,  1,   90,  0,  2,  2 },
+	{ "はがねのゆみ" , 7,  3,   80,  0,  2,  2 },
+	{ "ボウガン"		, 5,  2,  100, 20,  2,  2 },
+	{ "おの"			, 7,  7,   80,  0,  1,  1 },
+	{ "はがねのおの" , 9,  9,   70,  0,  1,  1 },
 };
 
 //キャラクター
@@ -148,15 +154,15 @@ struct UNIT
 	int defence;
 	int move;
 	WEAPON weapon;
-	int x, y;	//初期位置
+	INT2 pos;	//初期位置
 };
 constexpr int UNIT_MAX = 21;
 UNIT units[] =
 {
 	//名前		   職業　　　 HP  STR SKI WLV AGI LUC DEF MOV WEP
 	{ "マルス",	   LORD,     18, 5,   3,  5,  7,  7,  7,  7, RAPIRE },
-	{ "ジェイガン", PARADIN,  20, 7,   10, 10, 8,  1,  9,  10, IRON_SWORD },
-	{ "カイン",	   S_KINGHT, 18, 7,   5,  6,  7,  2,  7,  9, SPERA },
+	{ "ジェイガン", PARADIN,  20, 7,   10, 10, 8,  1,  9, 10, IRON_SWORD },
+	{ "カイン",	   S_KINGHT, 18, 7,   5,  6,  7,  2,  7,  9, IRON_SWORD },
 	{ "アベル",	   S_KINGHT, 18, 6,   7,  6,  7,  2,  7,  7, IRON_SWORD },
 	{ "ドーガ",	   A_KINGHT, 18, 7,   3,  4,  3,  1,  11, 5, IRON_SWORD },
 	{ "ゴードン",   ARCHER,   16, 5,   3,  5,  4,  4,  6,  5, BOW },
@@ -177,12 +183,18 @@ UNIT units[] =
 	{ "ガルダ兵",   PIRATE,   18, 5,   1,  5,  6,  0,  4,  6, AX },
 };
 
+//カーソル
+struct Cursor
+{
+	INT2 pos;
+}cursor;
+
 //座標を指定し、その座標にいるユニットを取得する
 int GetUnit(int x, int y)
 {
 	for (int i = 0; i < UNIT_MAX; ++i)
 	{
-		if ((units[i].x == x) && (units[i].y == y))
+		if ((units[i].pos.x == x) && (units[i].pos.y == y))
 		{
 			//その座標にいるユニットの番号を返す
 			return i;
@@ -190,6 +202,28 @@ int GetUnit(int x, int y)
 	}
 	//見つからなかったら-1
 	return -1;
+}
+
+//ユニットの情報を画面に表示
+void DrawUnit(int unit)
+{
+	printf("名前	  : %s\n", units[unit].name);
+	printf("職業      : %s\n", jobDesc[units[unit].job].name);
+	printf("力        :%2d\n", units[unit].strength);
+	printf("技        :%2d\n", units[unit].skill);
+	printf("武器レベル:%2d\n", units[unit].weaponLevel);
+	printf("素早さ    :%2d\n", units[unit].agillity);
+	printf("運        :%2d\n", units[unit].luck);	
+	printf("防御力    :%2d\n", units[unit].defence);
+	printf("移動力    :%2d\n", units[unit].move);
+	printf("%s(ダメージ:%d 重さ:%d 命中率:%d 必殺率:%d 射程:%d～%d) \n",
+		weaponDescs[units[unit].weapon].name,
+		weaponDescs[units[unit].weapon].damage, 
+		weaponDescs[units[unit].weapon].weight, 
+		weaponDescs[units[unit].weapon].hit, 
+		weaponDescs[units[unit].weapon].crirical,
+		weaponDescs[units[unit].weapon].rangeMin,
+		weaponDescs[units[unit].weapon].rangeMax);
 }
 
 void Initialize()
@@ -211,16 +245,16 @@ void Initialize()
 				//雑魚海賊の配置
 				if (c == 'k')
 				{
-					units[10 + pirateCnt].x = x;
-					units[10 + pirateCnt].y = y;
+					units[10 + pirateCnt].pos.x = x;
+					units[10 + pirateCnt].pos.y = y;
 					++pirateCnt;
 				}
 				else
 				{
 					//マルスの初期位置
 					int unit = c - 'a';
-					units[unit].x = x;
-					units[unit].y = y;
+					units[unit].pos.x = x;
+					units[unit].pos.y = y;
 				}
 				cells[y][x] = CELL_PLANE;
 			}
@@ -228,29 +262,59 @@ void Initialize()
 	}
 }
 
-void Draw()
+void UpDateDraw()
 {
-	for (int y = 0; y < MAP_HEIGHT; ++y)
+	while (1)
 	{
-		for (int x = 0; x < MAP_WIDTH; ++x)
+		//画面更新
+		system("cls");
+
+		for (int y = 0; y < MAP_HEIGHT; ++y)
 		{
-			int unit = GetUnit(x, y);
-			if (unit >= 0)
+			for (int x = 0; x < MAP_WIDTH; ++x)
 			{
-				printf("%s", jobDesc[units[unit].job].aa);
+				int unit = GetUnit(x, y);
+				//カーソルの描画
+				if (cursor.pos.x == x && cursor.pos.y == y)
+				{
+					printf("◎");
+				}
+				//ユニットの描画
+				else if (unit >= 0)
+				{
+					printf("%s", jobDesc[units[unit].job].aa);
+				}
+				//地形の描画
+				else
+				{
+					printf("%s", cellDescs[cells[y][x]].aa);
+				}
 			}
-			else
-			{
-				printf("%s", cellDescs[cells[y][x]].aa);
-			}
+			printf("\n");
 		}
-		printf("\n");
+		//カーソルと同じ位置にいるユニットの情報を画面のに表示
+		int unit = GetUnit(cursor.pos.x, cursor.pos.y);
+		if (unit >= 0)
+		{
+			DrawUnit(unit);
+		}
+		switch (_getch())
+		{
+		case 'w': --cursor.pos.y; break;
+		case 's': ++cursor.pos.y; break;
+		case 'a': --cursor.pos.x; break;
+		case 'd': ++cursor.pos.x; break;
+		}
+		//カーソルが画面外に来たら端にワープする
+		cursor.pos.x = (MAP_WIDTH + cursor.pos.x) % MAP_WIDTH;
+		cursor.pos.y = (MAP_HEIGHT + cursor.pos.y) % MAP_HEIGHT;
 	}
+	
 }
 int main()
 {
 	Initialize();
-	Draw();
+	UpDateDraw();
 	
 	_getch();
 }
