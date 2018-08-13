@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "Randam.hpp"
 
 struct INT2
 {
@@ -45,7 +46,7 @@ struct CELL_DESC
 {
 	char name[3 * 2 + 1];	//地形の名前
 	char aa[2 + 1];			//アスキーアート(絵)
-	int defence;			//防御効果(回避率)
+	int  parry;			    //防御効果(回避率)
 	bool heal;				//回復効果があるか
 
 };
@@ -180,13 +181,14 @@ struct UNIT
 	int strength;
 	int skill;
 	int weaponLevel;
-	int agillity;
+	int agility;
 	int luck;
 	int defence;
 	int move;
 	TEAM team;
 	WEAPON weapon;	
 	INT2 pos;		//初期位置
+	int hp;
 	bool done;		//行動が終わったか
 };
 constexpr int UNIT_MAX = 21;
@@ -376,10 +378,11 @@ void DrawUnit(int unit)
 	printf("\n");
 	printf("名前	  : %s\n", units[unit].name);
 	printf("職業      : %s\n", jobDesc[units[unit].job].name);
+	printf("HP        :%2d/%2d\n", units[unit].hp, units[unit].maxHp);
 	printf("力        :%2d\n", units[unit].strength);
 	printf("技        :%2d\n", units[unit].skill);
 	printf("武器レベル:%2d\n", units[unit].weaponLevel);
-	printf("素早さ    :%2d\n", units[unit].agillity);
+	printf("素早さ    :%2d\n", units[unit].agility);
 	printf("運        :%2d\n", units[unit].luck);	
 	printf("防御力    :%2d\n", units[unit].defence);
 	printf("移動力    :%2d\n", units[unit].move);
@@ -391,12 +394,13 @@ void DrawUnit(int unit)
 		weaponDescs[units[unit].weapon].crirical,
 		weaponDescs[units[unit].weapon].rangeMin,
 		weaponDescs[units[unit].weapon].rangeMax);
+
 }
 //カーソルと重なった地形の情報を表示
 void DrawMapData(INT2& Cursurpos)
 {
 	printf("%s\n", cellDescs[cells[Cursurpos.y][Cursurpos.x]].name);
-	printf("回避効果:%2d%%\n", cellDescs[cells[Cursurpos.y][Cursurpos.x]].defence);
+	printf("回避効果:%2d%%\n", cellDescs[cells[Cursurpos.y][Cursurpos.x]].parry);
 	printf("回復効果:%s\n", cellDescs[cells[Cursurpos.y][Cursurpos.x]].heal?"あり":"なし");
 }
 
@@ -408,6 +412,7 @@ enum AttackType
 };
 
 
+//攻撃時の処理
 void Attack(int attack_, int defence_ , AttackType type)
 {
 	FlipDisplay();
@@ -419,6 +424,63 @@ void Attack(int attack_, int defence_ , AttackType type)
 	case SECOND:   printf("再攻撃!\n"); break;
 	}
 	getchar();
+
+	//武器の攻撃力とユニットの力を足した値から相手の守備力を引いた値をダメージとする
+	//与ダメージ = (力+武器攻撃力 - 防御力)
+	int damage = units[attack_].strength +
+		weaponDescs[units[attack_].weapon].damage -
+		units[defence_].defence;
+	printf("damage:%d\n", damage);
+	//クリティカル
+	//(技 + 運) / 2+ 武器必殺率
+	int critical = (units[attack_].skill + units[attack_].luck) / 2 +
+		weaponDescs[units[attack_].weapon].crirical;
+	Random rand;
+	int r = rand.GetRand(0, 1);
+	printf("critical:%d rand:%d\n", critical, r);
+	//乱数がクリティカルより小さかったら発生する
+	if (r < critical)
+	{
+		damage *= 3;
+		printf("必殺の一撃!\n");
+		getchar();
+		units[defence_].hp -= damage;
+		printf("%sに%dのダメージ!\n", units[defence_].name, damage);
+		getchar();
+	}
+	else
+	{
+		//命中率
+		//技 + 武器命中率
+		int hit = units[attack_].skill + weaponDescs[units[attack_].weapon].hit;
+		//回避率
+		//素早さ - 武器重量 + 地形効果
+		int parry = units[defence_].agility - weaponDescs[units[attack_].weapon].weight +
+			cellDescs[cells[units[defence_].pos.y][units[defence_].pos.x]].parry;
+		printf("hit:%d parry:%d\n",hit,parry);
+		hit -= parry;
+		r = rand.GetRand(0, 99);
+		printf("hit:%d rand:%d\n", hit, r);
+		if (r < hit)
+		{
+			if (damage <= 0)
+			{
+				printf("ダメージを与えられない!\n");
+			}
+			else
+			{
+				units[defence_].hp -= damage;
+				printf("%sに%dのダメージ!\n", units[defence_].name, damage);
+			}
+		}
+		else
+		{
+			printf("%sは素早く身をかわした!\n", units[defence_].name);
+		}
+	}
+	getchar();
+	
+
 }
 
 //戦闘時の処理
@@ -426,12 +488,28 @@ void Battle(int attack_, int defence_)
 {
 	Attack(attack_, defence_, NOMAL);
 	Attack(defence_, attack_, COUNTER);
+
+	//再攻撃はAGI - 武器重量から速度を取得し、速度が勝っているほうが再攻撃できる
+	int attackSpeed = units[attack_].agility - weaponDescs[units[attack_].weapon].weight;
+	int defenceSpeed = units[defence_].agility - weaponDescs[units[defence_].weapon].weight;
+	if (attackSpeed > defenceSpeed)
+	{
+		Attack(attack_, defence_, SECOND);
+	}
+	else if (defenceSpeed > attackSpeed)
+	{
+		Attack(defence_, attack_, SECOND);
+	}
 }
 
 void Initialize()
 {
 	phase = SELECT_UNIT;
 	int pirateCnt = 0;//海賊の人数を格納
+	for (int i = 0; i < UNIT_MAX; ++i)
+	{
+		units[i].hp = units[i].maxHp;
+	}
 	for (int y = 0; y < MAP_HEIGHT; ++y)
 	{
 		for (int x = 0; x < MAP_WIDTH; ++x)
