@@ -225,6 +225,13 @@ void DrawUnit(int unit)
 		weaponDescs[units[unit].weapon].rangeMin,
 		weaponDescs[units[unit].weapon].rangeMax);
 }
+//カーソルと重なった地形の情報を表示
+void DrawMapData(INT2& Cursurpos)
+{
+	printf("%s\n", cellDescs[cells[Cursurpos.y][Cursurpos.x]].name);
+	printf("回避効果:%2d%%\n", cellDescs[cells[Cursurpos.y][Cursurpos.x]].defence);
+	printf("回復効果:%s\n", cellDescs[cells[Cursurpos.y][Cursurpos.x]].heal?"あり":"なし");
+}
 
 void Initialize()
 {
@@ -236,6 +243,7 @@ void Initialize()
 			char c = mapData[MAP_WIDTH * y + x];
 			//文字から数値に変換する
 			//isdigit関数は文字cが10進数字('0'～'9')なら真を返す
+			//地形の初期位置
 			if (isdigit(c))
 			{
 				cells[y][x] = c - '0';
@@ -251,7 +259,7 @@ void Initialize()
 				}
 				else
 				{
-					//マルスの初期位置
+					//キャラクターの初期位置
 					int unit = c - 'a';
 					units[unit].pos.x = x;
 					units[unit].pos.y = y;
@@ -292,11 +300,17 @@ void UpDateDraw()
 			}
 			printf("\n");
 		}
-		//カーソルと同じ位置にいるユニットの情報を画面のに表示
+		//カーソルと同じ位置にあるオブジェクトの情報を画面に表示
 		int unit = GetUnit(cursor.pos.x, cursor.pos.y);
 		if (unit >= 0)
 		{
+			//ユニットの情報を表示
 			DrawUnit(unit);
+		}
+		else
+		{
+			//地形の情報を表示
+			DrawMapData(cursor.pos);
 		}
 		switch (_getch())
 		{
