@@ -185,8 +185,9 @@ struct UNIT
 	int defence;
 	int move;
 	TEAM team;
-	WEAPON weapon;
-	INT2 pos;	//初期位置
+	WEAPON weapon;	
+	INT2 pos;		//初期位置
+	bool done;		//行動が終わったか
 };
 constexpr int UNIT_MAX = 21;
 UNIT units[] =
@@ -195,7 +196,7 @@ UNIT units[] =
 	{ "マルス",	   LORD,     18, 5,   3,  5,  7,  7,  7,  7, PLAYER, RAPIRE },
 	{ "ジェイガン", PARADIN,  20, 7,   10, 10, 8,  1,  9, 10, PLAYER, IRON_SWORD },
 	{ "カイン",	   S_KINGHT, 18, 7,   5,  6,  7,  2,  7,  9, PLAYER, IRON_SWORD },
-	{ "アベル",	   S_KINGHT, 18, 6,   7,  6,  7,  2,  7,  7, PLAYER, IRON_SWORD },
+	{ "アベル",	   S_KINGHT, 18, 6,   7,  6,  7,  2,  7,  7, PLAYER, HAND_SPEAR },
 	{ "ドーガ",	   A_KINGHT, 18, 7,   3,  4,  3,  1,  11, 5, PLAYER, IRON_SWORD },
 	{ "ゴードン",   ARCHER,   16, 5,   3,  5,  4,  4,  6,  5, PLAYER, BOW },
 	{ "シーダ",	   P_KINGHT, 16, 3,   6,  7,  12,  9,  7, 8, PLAYER, IRON_SWORD },
@@ -220,7 +221,7 @@ struct Cursor
 {
 	INT2 pos;
 }cursor;
-
+int selectedUnit;
 //ゲームの状態
 enum PHASE
 {
@@ -230,6 +231,50 @@ enum PHASE
 	PHASE_MAX
 };
 PHASE phase;
+
+//2人のユニットの距離を測る
+int GetUnitsDistance(int unit1, int unit2)
+{
+	return abs(units[unit1].pos.x - units[unit2].pos.x) + 
+		abs(units[unit1].pos.y - units[unit2].pos.y);
+}
+
+//攻撃する側が相手を攻撃できるか調べる
+bool IsCanAttack(int attack_, int defence_)
+{
+	if (attack_ < 0 || defence_ < 0)
+	{
+		return false;
+	}
+	//指定したユニットが味方なら攻撃させない
+	if (units[attack_].team == units[defence_].team)
+	{
+		return false;
+	}
+	//武器の射程の範囲内なら攻撃可能
+	const int rangeMin = weaponDescs[units[attack_].weapon].rangeMin;
+	const int rangeMax = weaponDescs[units[attack_].weapon].rangeMax;
+	if (GetUnitsDistance(attack_, defence_) == rangeMin
+		|| GetUnitsDistance(attack_, defence_) <= rangeMax)
+	{
+		return true;
+	}
+	return false;
+}
+
+//攻撃可能なユニットを取得する
+int GetCanAttackUnit(int unit_)
+{
+	for (int i = 0; i < UNIT_MAX; ++i)
+	{
+		if (IsCanAttack(unit_, i))
+		{
+			return i;
+		}
+	}
+	//不可なら-1
+	return -1;
+}
 
 //座標を指定し、その座標にいるユニットを取得する
 int GetUnit(int x, int y)
@@ -286,11 +331,49 @@ void FillCanMoceCells(int unit_, int x, int y, int movePow)
 	}
 }
 
+//画面を更新する
+void FlipDisplay()
+{
+	//画面更新
+	system("cls");
 
+	for (int y = 0; y < MAP_HEIGHT; ++y)
+	{
+		for (int x = 0; x < MAP_WIDTH; ++x)
+		{
+			int unit = GetUnit(x, y);
+			//カーソルの描画
+			if (cursor.pos.x == x && cursor.pos.y == y)
+			{
+				printf("◎");
+			}
+			else if (fill[y][x])
+			{
+				printf("■");
+			}
+			//ユニットの描画
+			else if (unit >= 0)
+			{
+				printf("%s", jobDesc[units[unit].job].aa);
+			}
+			//地形の描画
+			else
+			{
+				printf("%s", cellDescs[cells[y][x]].aa);
+			}
+		}
+		printf("\n");
+	}
+}
 
 //ユニットの情報を画面に表示
 void DrawUnit(int unit)
 {
+	if (units[unit].team == PLAYER)
+	{
+		printf("<%s>", units[unit].done ? "行動済" : "未行動");
+	}
+	printf("\n");
 	printf("名前	  : %s\n", units[unit].name);
 	printf("職業      : %s\n", jobDesc[units[unit].job].name);
 	printf("力        :%2d\n", units[unit].strength);
@@ -315,6 +398,34 @@ void DrawMapData(INT2& Cursurpos)
 	printf("%s\n", cellDescs[cells[Cursurpos.y][Cursurpos.x]].name);
 	printf("回避効果:%2d%%\n", cellDescs[cells[Cursurpos.y][Cursurpos.x]].defence);
 	printf("回復効果:%s\n", cellDescs[cells[Cursurpos.y][Cursurpos.x]].heal?"あり":"なし");
+}
+
+enum AttackType
+{
+	NOMAL,		//通常攻撃
+	COUNTER,	//反撃
+	SECOND		//再攻撃
+};
+
+
+void Attack(int attack_, int defence_ , AttackType type)
+{
+	FlipDisplay();
+	printf("%sの",units[attack_].name);
+	switch (type)
+	{
+	case NOMAL:    printf("攻撃!\n");   break;
+	case COUNTER:  printf("反撃!\n");   break;
+	case SECOND:   printf("再攻撃!\n"); break;
+	}
+	getchar();
+}
+
+//戦闘時の処理
+void Battle(int attack_, int defence_)
+{
+	Attack(attack_, defence_, NOMAL);
+	Attack(defence_, attack_, COUNTER);
 }
 
 void Initialize()
@@ -359,42 +470,12 @@ void UpDateDraw()
 {
 	while (1)
 	{
-		//画面更新
-		system("cls");
-
-		for (int y = 0; y < MAP_HEIGHT; ++y)
-		{
-			for (int x = 0; x < MAP_WIDTH; ++x)
-			{
-				int unit = GetUnit(x, y);
-				//カーソルの描画
-				if (cursor.pos.x == x && cursor.pos.y == y)
-				{
-					printf("◎");
-				}
-				else if (fill[y][x])
-				{
-					printf("■");
-				}
-				//ユニットの描画
-				else if (unit >= 0)
-				{
-					printf("%s", jobDesc[units[unit].job].aa);
-				}
-				//地形の描画
-				else
-				{
-					printf("%s", cellDescs[cells[y][x]].aa);
-				}
-			}
-			printf("\n");
-		}
-
+		FlipDisplay();
 		switch (phase)
 		{
-		case SELECT_UNIT:		 printf("ユニットを選択してください\n"); break;
-		case SET_MOVE_POSITION:	 printf("移動先を設定してください\n"); break;
-		case SELECT_ATTACK_UNIT: printf("攻撃対象を選んでください\n"); break;
+		case SELECT_UNIT:		 printf("ユニットを選択してください。\n"); break;
+		case SET_MOVE_POSITION:	 printf("移動先を設定してください。\n"); break;
+		case SELECT_ATTACK_UNIT: printf("攻撃対象を選んでください。(自身を選択で待機)\n"); break;
 		}
 		printf("\n");
 		//カーソルと同じ位置にあるオブジェクトの情報を画面に表示
@@ -426,23 +507,75 @@ void UpDateDraw()
 				{
 					break;
 				}
-				else
+				//あるユニットの座標に対して上下左右に対して塗りつぶしができるか調べ、可能なら塗りつぶす
+				memset(fill, 0, sizeof fill);	//バッファのクリア
+				for (int i = 0; i < DIRECTION_MAX; ++i)
 				{
-					//あるユニットの座標に対して上下左右に対して塗りつぶしができるか調べる
-					memset(fill, 0, sizeof fill);
-					for (int i = 0; i < DIRECTION_MAX; ++i)
+					int x = units[unit].pos.x + directions[i][0];
+					int y = units[unit].pos.y + directions[i][1];
+					FillCanMoceCells(unit, x, y, units[unit].move);
+				}
+				//ほかのユニットと重なっていたら塗りつぶしを解除する
+				for (int y = 0; y < MAP_HEIGHT; ++y)
+				{
+					for(int x = 0; x < MAP_WIDTH; ++x)
 					{
-						int x = units[unit].pos.x + directions[i][0];
-						int y = units[unit].pos.y + directions[i][1];
-						FillCanMoceCells(unit, x, y, units[unit].move);
+						int unit2 = GetUnit(x, y);
+						if (unit2 >= 0 && fill[y][x])
+						{
+							fill[y][x] = false;
+						}
 					}
+				}
+				//味方のユニットを選択し、移動先を決める
+				if (units[unit].team == PLAYER)
+				{
+					selectedUnit = unit;
+					phase = SET_MOVE_POSITION;
 				}
 				break;
 			}
-			case SET_MOVE_POSITION:  break;
-			case SELECT_ATTACK_UNIT: break;
+			case SET_MOVE_POSITION:  
+				//塗りつぶされているマスが選択されたらそこに移動する
+				if (fill[cursor.pos.y][cursor.pos.x])
+				{
+					units[selectedUnit].pos.x = cursor.pos.x;
+					units[selectedUnit].pos.y = cursor.pos.y;
+					memset(fill, 0, sizeof fill);
 
-
+					//攻撃可能なユニットがいれば攻撃対象を選ぶ
+					if (GetCanAttackUnit(selectedUnit) >= 0)
+					{
+						phase = SELECT_ATTACK_UNIT;
+					}
+					else
+					{
+						units[selectedUnit].done = true;
+						phase = SELECT_UNIT;
+					}
+				}
+				break;
+			case SELECT_ATTACK_UNIT: 
+				//自身を選択していれば待機
+				if (cursor.pos.x == units[selectedUnit].pos.x &&
+					cursor.pos.y == units[selectedUnit].pos.y)
+				{
+					units[selectedUnit].done = true;
+					phase = SELECT_UNIT;
+				}
+				else
+				{
+					//選択したユニットを取得する
+					int unit = GetUnit(cursor.pos.x, cursor.pos.y);
+					if(IsCanAttack(selectedUnit, unit))
+					{
+						Battle(selectedUnit,unit);
+						units[selectedUnit].done = true;
+						phase = SELECT_UNIT;
+						
+					}
+				}
+				break;
 			}
 			break;
 		}
