@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <windows.h>
 #include "Randam.hpp"
 
 struct INT2
@@ -47,7 +48,7 @@ struct CELL_DESC
 	char name[3 * 2 + 1];	//地形の名前
 	char aa[2 + 1];			//アスキーアート(絵)
 	int  parry;			    //防御効果(回避率)
-	bool heal;				//回復効果があるか
+	bool isHeal;				//回復効果があるか
 
 };
 CELL_DESC cellDescs[] = {
@@ -186,7 +187,7 @@ struct UNIT
 	int defence;
 	int move;
 	TEAM team;
-	WEAPON weapon;	
+	WEAPON weapon;
 	INT2 pos;		//初期位置
 	int hp;
 	bool done;		//行動が終わったか
@@ -195,27 +196,27 @@ constexpr int UNIT_MAX = 21;
 UNIT units[] =
 {
 	//名前		   職業　　　 HP  STR SKI WLV AGI LUC DEF MOV TEAM    WEP
-	{ "マルス",	   LORD,     18, 5,   3,  5,  7,  7,  7,  7, PLAYER, RAPIRE },
-	{ "ジェイガン", PARADIN,  20, 7,   10, 10, 8,  1,  9, 10, PLAYER, IRON_SWORD },
-	{ "カイン",	   S_KINGHT, 18, 7,   5,  6,  7,  2,  7,  9, PLAYER, IRON_SWORD },
-	{ "アベル",	   S_KINGHT, 18, 6,   7,  6,  7,  2,  7,  7, PLAYER, HAND_SPEAR },
-	{ "ドーガ",	   A_KINGHT, 18, 7,   3,  4,  3,  1,  11, 5, PLAYER, IRON_SWORD },
-	{ "ゴードン",   ARCHER,   16, 5,   3,  5,  4,  4,  6,  5, PLAYER, BOW },
-	{ "シーダ",	   P_KINGHT, 16, 3,   6,  7,  12,  9,  7, 8, PLAYER, IRON_SWORD },
-	{ "ガザック",   PIRATE,   24, 7,   3,  7,  8,  0,  6,  6, ENEMY,  STEAL_AX },
-	{ "ガルダ兵",   HUNTER,   18, 6,   1,  5,  5,  0,  2,  7, ENEMY,  BOW },
-	{ "ガルダ兵",   THIEF,    16, 3,   1,  5,  9,  0,  4,  6, ENEMY,  IRON_SWORD },
-	{ "ガルダ兵",   PIRATE,   18, 5,   1,  5,  6,  0,  4,  6, ENEMY,  AX },
-	{ "ガルダ兵",   PIRATE,   18, 5,   1,  5,  6,  0,  4,  6, ENEMY,  AX },
-	{ "ガルダ兵",   PIRATE,   18, 5,   1,  5,  6,  0,  4,  6, ENEMY,  AX },
-	{ "ガルダ兵",   PIRATE,   18, 5,   1,  5,  6,  0,  4,  6, ENEMY,  AX },
-	{ "ガルダ兵",   PIRATE,   18, 5,   1,  5,  6,  0,  4,  6, ENEMY,  AX },
-	{ "ガルダ兵",   PIRATE,   18, 5,   1,  5,  6,  0,  4,  6, ENEMY,  AX },
-	{ "ガルダ兵",   PIRATE,   18, 5,   1,  5,  6,  0,  4,  6, ENEMY,  AX },
-	{ "ガルダ兵",   PIRATE,   18, 5,   1,  5,  6,  0,  4,  6, ENEMY,  AX },
-	{ "ガルダ兵",   PIRATE,   18, 5,   1,  5,  6,  0,  4,  6, ENEMY,  AX },
-	{ "ガルダ兵",   PIRATE,   18, 5,   1,  5,  6,  0,  4,  6, ENEMY,  AX },
-	{ "ガルダ兵",   PIRATE,   18, 5,   1,  5,  6,  0,  4,  6, ENEMY,  AX },
+		{ "マルス", LORD, 18, 5, 3, 5, 7, 7, 7, 7, PLAYER, RAPIRE },
+		{ "ジェイガン", PARADIN,  20, 7,   10, 10, 8,  1,  9, 10, PLAYER, IRON_SWORD },
+		{ "カイン",	   S_KINGHT, 18, 7,   5,  6,  7,  2,  7,  9, PLAYER, IRON_SWORD },
+		{ "アベル",	   S_KINGHT, 18, 6,   7,  6,  7,  2,  7,  7, PLAYER, HAND_SPEAR },
+		{ "ドーガ",	   A_KINGHT, 18, 7,   3,  4,  3,  1,  11, 5, PLAYER, IRON_SWORD },
+		{ "ゴードン",   ARCHER,   16, 5,   3,  5,  4,  4,  6,  5, PLAYER, BOW },
+		{ "シーダ",	   P_KINGHT, 16, 3,   6,  7,  12,  9,  7, 8, PLAYER, IRON_SWORD },
+		{ "ガザック",   PIRATE,   24, 7,   3,  7,  8,  0,  6,  6, ENEMY,  STEAL_AX },
+		{ "ガルダ兵",   HUNTER,   18, 6,   1,  5,  5,  0,  2,  7, ENEMY,  BOW },
+		{ "ガルダ兵",   THIEF,    16, 3,   1,  5,  9,  0,  4,  6, ENEMY,  IRON_SWORD },
+		{ "ガルダ兵",   PIRATE,   18, 5,   1,  5,  6,  0,  4,  6, ENEMY,  AX },
+		{ "ガルダ兵",   PIRATE,   18, 5,   1,  5,  6,  0,  4,  6, ENEMY,  AX },
+		{ "ガルダ兵",   PIRATE,   18, 5,   1,  5,  6,  0,  4,  6, ENEMY,  AX },
+		{ "ガルダ兵",   PIRATE,   18, 5,   1,  5,  6,  0,  4,  6, ENEMY,  AX },
+		{ "ガルダ兵",   PIRATE,   18, 5,   1,  5,  6,  0,  4,  6, ENEMY,  AX },
+		{ "ガルダ兵",   PIRATE,   18, 5,   1,  5,  6,  0,  4,  6, ENEMY,  AX },
+		{ "ガルダ兵",   PIRATE,   18, 5,   1,  5,  6,  0,  4,  6, ENEMY,  AX },
+		{ "ガルダ兵",   PIRATE,   18, 5,   1,  5,  6,  0,  4,  6, ENEMY,  AX },
+		{ "ガルダ兵",   PIRATE,   18, 5,   1,  5,  6,  0,  4,  6, ENEMY,  AX },
+		{ "ガルダ兵",   PIRATE,   18, 5,   1,  5,  6,  0,  4,  6, ENEMY,  AX },
+		{ "ガルダ兵",   PIRATE,   18, 5,   1,  5,  6,  0,  4,  6, ENEMY,  AX },
 };
 
 //カーソル
@@ -224,6 +225,7 @@ struct Cursor
 	INT2 pos;
 }cursor;
 int selectedUnit;
+int turn;
 //ゲームの状態
 enum PHASE
 {
@@ -237,7 +239,7 @@ PHASE phase;
 //2人のユニットの距離を測る
 int GetUnitsDistance(int unit1, int unit2)
 {
-	return abs(units[unit1].pos.x - units[unit2].pos.x) + 
+	return abs(units[unit1].pos.x - units[unit2].pos.x) +
 		abs(units[unit1].pos.y - units[unit2].pos.y);
 }
 
@@ -256,11 +258,14 @@ bool IsCanAttack(int attack_, int defence_)
 	//武器の射程の範囲内なら攻撃可能
 	const int rangeMin = weaponDescs[units[attack_].weapon].rangeMin;
 	const int rangeMax = weaponDescs[units[attack_].weapon].rangeMax;
-	if (GetUnitsDistance(attack_, defence_) == rangeMin
-		|| GetUnitsDistance(attack_, defence_) <= rangeMax)
+	if (GetUnitsDistance(attack_, defence_) == rangeMin)
 	{
 		return true;
 	}
+	//if (GetUnitsDistance(attack_, defence_) == rangeMax)
+	//{
+	//	return true;
+	//}
 	return false;
 }
 
@@ -293,21 +298,34 @@ int GetUnit(int x, int y)
 	return -1;
 }
 
-//移動可能なセルを塗りつぶす
-void FillCanMoceCells(int unit_, int x, int y, int movePow)
+//行動済みのユニットか調べる
+bool IsDone()
 {
-	//画面外なら塗りつぶさない
-	if (x < 0 || x >= MAP_WIDTH || 
+	for (int i = 0; i < UNIT_MAX; ++i)
+	{
+		if (cursor.pos.x == units[i].pos.x &&
+			cursor.pos.y == units[i].pos.y &&
+			units[i].done)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+bool IsCanMove(int unit_, int x, int y, int movePow)
+{
+	//画面外なら判定しない
+	if (x < 0 || x >= MAP_WIDTH ||
 		y < 0 || y >= MAP_HEIGHT)
 	{
-		return;
+		return false;
 	}
-	//敵がいる場所も塗りつぶさない
+	//ユニットがいる場所も判定しない
 	{
 		int unit = GetUnit(x, y);
 		if (unit >= 0 && units[unit].team != units[unit_].team)
 		{
-			return;
+			return false;
 		}
 	}
 	//引数で指定したユニットの移動力を取得
@@ -315,15 +333,25 @@ void FillCanMoceCells(int unit_, int x, int y, int movePow)
 	//移動力が足りなければ終了
 	if (moveCost < 0)
 	{
-		return;
+		return false;
 	}
 	if (movePow < moveCost)
 	{
+		return false;
+	}
+	return true;
+}
+//移動可能なセルを塗りつぶす
+void FillCanMoceCells(int unit_, int x, int y, int movePow)
+{
+	if (!IsCanMove(unit_, x, y, movePow))
+	{
 		return;
 	}
+
 	fill[y][x] = true;
 	//塗りつぶしたらコストを払う
-	movePow -= moveCost;
+	movePow -= jobDesc[units[unit_].job].moveCosts[cells[y][x]];
 
 	for (int i = 0; i < DIRECTION_MAX; ++i)
 	{
@@ -345,7 +373,7 @@ void FlipDisplay()
 		{
 			int unit = GetUnit(x, y);
 			//カーソルの描画
-			if (cursor.pos.x == x && cursor.pos.y == y)
+			if (cursor.pos.x == x && cursor.pos.y == y && turn == PLAYER)
 			{
 				printf("◎");
 			}
@@ -383,14 +411,14 @@ void DrawUnit(int unit)
 	printf("技        :%2d\n", units[unit].skill);
 	printf("武器レベル:%2d\n", units[unit].weaponLevel);
 	printf("素早さ    :%2d\n", units[unit].agility);
-	printf("運        :%2d\n", units[unit].luck);	
+	printf("運        :%2d\n", units[unit].luck);
 	printf("防御力    :%2d\n", units[unit].defence);
 	printf("移動力    :%2d\n", units[unit].move);
 	printf("%s(ダメージ:%d 重さ:%d 命中率:%d 必殺率:%d 射程:%d～%d) \n",
 		weaponDescs[units[unit].weapon].name,
-		weaponDescs[units[unit].weapon].damage, 
-		weaponDescs[units[unit].weapon].weight, 
-		weaponDescs[units[unit].weapon].hit, 
+		weaponDescs[units[unit].weapon].damage,
+		weaponDescs[units[unit].weapon].weight,
+		weaponDescs[units[unit].weapon].hit,
 		weaponDescs[units[unit].weapon].crirical,
 		weaponDescs[units[unit].weapon].rangeMin,
 		weaponDescs[units[unit].weapon].rangeMax);
@@ -401,7 +429,7 @@ void DrawMapData(INT2& Cursurpos)
 {
 	printf("%s\n", cellDescs[cells[Cursurpos.y][Cursurpos.x]].name);
 	printf("回避効果:%2d%%\n", cellDescs[cells[Cursurpos.y][Cursurpos.x]].parry);
-	printf("回復効果:%s\n", cellDescs[cells[Cursurpos.y][Cursurpos.x]].heal?"あり":"なし");
+	printf("回復効果:%s\n", cellDescs[cells[Cursurpos.y][Cursurpos.x]].isHeal ? "あり" : "なし");
 }
 
 enum AttackType
@@ -412,11 +440,9 @@ enum AttackType
 };
 
 
-//攻撃時の処理
-void Attack(int attack_, int defence_ , AttackType type)
+void AttackMessage(int attack_, int defence_, AttackType type)
 {
-	FlipDisplay();
-	printf("%sの",units[attack_].name);
+	printf("%sの", units[attack_].name);
 	switch (type)
 	{
 	case NOMAL:    printf("攻撃!\n");   break;
@@ -424,29 +450,28 @@ void Attack(int attack_, int defence_ , AttackType type)
 	case SECOND:   printf("再攻撃!\n"); break;
 	}
 	getchar();
+}
 
+void BattleCalculation(int attack_, int defence_)
+{
 	//武器の攻撃力とユニットの力を足した値から相手の守備力を引いた値をダメージとする
 	//与ダメージ = (力+武器攻撃力 - 防御力)
 	int damage = units[attack_].strength +
 		weaponDescs[units[attack_].weapon].damage -
 		units[defence_].defence;
-	printf("damage:%d\n", damage);
 	//クリティカル
 	//(技 + 運) / 2+ 武器必殺率
 	int critical = (units[attack_].skill + units[attack_].luck) / 2 +
 		weaponDescs[units[attack_].weapon].crirical;
 	Random rand;
-	int r = rand.GetRand(0, 1);
-	printf("critical:%d rand:%d\n", critical, r);
+	int r = rand.GetRand(0, 99);
 	//乱数がクリティカルより小さかったら発生する
 	if (r < critical)
 	{
 		damage *= 3;
 		printf("必殺の一撃!\n");
-		getchar();
 		units[defence_].hp -= damage;
 		printf("%sに%dのダメージ!\n", units[defence_].name, damage);
-		getchar();
 	}
 	else
 	{
@@ -457,10 +482,8 @@ void Attack(int attack_, int defence_ , AttackType type)
 		//素早さ - 武器重量 + 地形効果
 		int parry = units[defence_].agility - weaponDescs[units[attack_].weapon].weight +
 			cellDescs[cells[units[defence_].pos.y][units[defence_].pos.x]].parry;
-		printf("hit:%d parry:%d\n",hit,parry);
 		hit -= parry;
 		r = rand.GetRand(0, 99);
-		printf("hit:%d rand:%d\n", hit, r);
 		if (r < hit)
 		{
 			if (damage <= 0)
@@ -479,8 +502,48 @@ void Attack(int attack_, int defence_ , AttackType type)
 		}
 	}
 	getchar();
-	
+}
 
+void BattleEndMessage(int attack_, int defence_)
+{
+	if (units[defence_].hp <= 0)
+	{
+		//死んだら画面外に退場させる
+		units[defence_].pos.x = -1;
+		units[defence_].pos.y = -1;
+		FlipDisplay();
+		if (units[defence_].team == ENEMY)
+		{
+			printf("%sを倒した!\n", units[defence_].name);
+		}
+		else
+		{
+			printf("%sは倒れた...\n", units[defence_].name);
+		}
+		getchar();
+		//マルスが死んだらゲームオーバー
+		if (defence_ == 0)
+		{
+			printf("GAME OVER\n\a");
+			getchar();
+			exit(0);
+		}
+	}
+}
+
+//攻撃時の処理
+void Attack(int attack_, int defence_, AttackType type)
+{
+	//どちらかが死んだユニットだったら何もしない
+	if (units[attack_].hp <= 0 ||
+		units[defence_].hp <= 0)
+	{
+		return;
+	}
+	FlipDisplay();
+	AttackMessage(attack_, defence_, type);
+	BattleCalculation(attack_, defence_);
+	BattleEndMessage(attack_, defence_);
 }
 
 //戦闘時の処理
@@ -494,11 +557,50 @@ void Battle(int attack_, int defence_)
 	int defenceSpeed = units[defence_].agility - weaponDescs[units[defence_].weapon].weight;
 	if (attackSpeed > defenceSpeed)
 	{
-		Attack(attack_, defence_, SECOND);
+		if (IsCanAttack(attack_, defence_))
+		{
+			Attack(attack_, defence_, SECOND);
+		}
+		
 	}
 	else if (defenceSpeed > attackSpeed)
 	{
-		Attack(defence_, attack_, SECOND);
+		if (IsCanAttack(defence_, attack_))
+		{
+			Attack(defence_, attack_, SECOND);
+		}
+		
+	}
+}
+
+//ターン開始時の処理
+void TurnInit(int team)
+{
+	for (int i = 0; i < UNIT_MAX; ++i)
+	{
+		if (units[i].team != team)
+		{
+			continue;
+		}
+		units[i].done = false;
+		//回復できるマスにいてhpが最大より低ければ回復
+		if (units[i].hp < units[i].maxHp &&
+			cellDescs[cells[units[i].pos.y][units[i].pos.x]].isHeal)
+		{
+			Random rand;
+			int heal = 3 + rand.GetRand(0, 8);
+			//上限値を超えないようにする
+			if (heal > units[i].maxHp - units[i].hp)
+			{
+				heal = units[i].maxHp - units[i].hp;
+			}
+			units[i].hp += heal;
+			printf("%sは%sで休息して%d回復した!\n",
+				units[i].name,
+				cellDescs[cells[units[i].pos.y][units[i].pos.x]].name,
+				heal);
+			getchar();
+		}
 	}
 }
 
@@ -551,11 +653,10 @@ void UpDateDraw()
 		FlipDisplay();
 		switch (phase)
 		{
-		case SELECT_UNIT:		 printf("ユニットを選択してください。\n"); break;
+		case SELECT_UNIT:		 printf("ユニットを選択してください。(Eキーで:ターン終了)\n"); break;
 		case SET_MOVE_POSITION:	 printf("移動先を設定してください。\n"); break;
 		case SELECT_ATTACK_UNIT: printf("攻撃対象を選んでください。(自身を選択で待機)\n"); break;
 		}
-		printf("\n");
 		//カーソルと同じ位置にあるオブジェクトの情報を画面に表示
 		int unit = GetUnit(cursor.pos.x, cursor.pos.y);
 		if (unit >= 0)
@@ -574,13 +675,17 @@ void UpDateDraw()
 		case 's': ++cursor.pos.y; break;
 		case 'a': --cursor.pos.x; break;
 		case 'd': ++cursor.pos.x; break;
-		//エンターキーを押したとき
-		case '\r': 
+			//エンターキーを押したとき
+		case '\r':
 			switch (phase)
 			{
-			case SELECT_UNIT: 
+			case SELECT_UNIT:
 			{
 				int unit = GetUnit(cursor.pos.x, cursor.pos.y);
+				if (IsDone())
+				{
+					break;
+				}
 				if (unit < 0)
 				{
 					break;
@@ -596,7 +701,7 @@ void UpDateDraw()
 				//ほかのユニットと重なっていたら塗りつぶしを解除する
 				for (int y = 0; y < MAP_HEIGHT; ++y)
 				{
-					for(int x = 0; x < MAP_WIDTH; ++x)
+					for (int x = 0; x < MAP_WIDTH; ++x)
 					{
 						int unit2 = GetUnit(x, y);
 						if (unit2 >= 0 && fill[y][x])
@@ -611,16 +716,29 @@ void UpDateDraw()
 					selectedUnit = unit;
 					phase = SET_MOVE_POSITION;
 				}
+			
 				break;
 			}
-			case SET_MOVE_POSITION:  
+			case SET_MOVE_POSITION:
 				//塗りつぶされているマスが選択されたらそこに移動する
 				if (fill[cursor.pos.y][cursor.pos.x])
 				{
 					units[selectedUnit].pos.x = cursor.pos.x;
 					units[selectedUnit].pos.y = cursor.pos.y;
 					memset(fill, 0, sizeof fill);
-
+					//マルスが城についたらエンディング
+					if (cells[units[0].pos.y][units[0].pos.x] == CELL_CASTLE)
+					{
+						FlipDisplay();
+						printf("王『おめでとう』\n");
+						getchar();
+						FlipDisplay();
+						printf("王『褒美に死をやろう!』\n");
+						getchar();
+						FlipDisplay();
+						printf("『THE END』\n\a");
+						exit(0);
+					}
 					//攻撃可能なユニットがいれば攻撃対象を選ぶ
 					if (GetCanAttackUnit(selectedUnit) >= 0)
 					{
@@ -633,7 +751,7 @@ void UpDateDraw()
 					}
 				}
 				break;
-			case SELECT_ATTACK_UNIT: 
+			case SELECT_ATTACK_UNIT:
 				//自身を選択していれば待機
 				if (cursor.pos.x == units[selectedUnit].pos.x &&
 					cursor.pos.y == units[selectedUnit].pos.y)
@@ -645,28 +763,101 @@ void UpDateDraw()
 				{
 					//選択したユニットを取得する
 					int unit = GetUnit(cursor.pos.x, cursor.pos.y);
-					if(IsCanAttack(selectedUnit, unit))
+					if (IsCanAttack(selectedUnit, unit))
 					{
-						Battle(selectedUnit,unit);
+						Battle(selectedUnit, unit);
 						units[selectedUnit].done = true;
 						phase = SELECT_UNIT;
-						
+
 					}
 				}
 				break;
 			}
+			break;
+		case 'e':
+			turn = ENEMY;
+			FlipDisplay();
+			printf("敵のターン\n");
+			TurnInit(ENEMY);
+			getchar();
+			for (int i = UNIT_MAX - 1; i >= 0; --i)
+			{
+				if (units[i].team != ENEMY || units[i].hp <= 0)
+				{
+					continue;
+				}
+				//敵はマルスを追いかける
+				int target[2] = { units[0].pos.x,units[0].pos.y };
+				//ガザックは城を目指す
+				if (i == 7)
+				{
+					target[0] = 4;
+					target[1] = 4;
+				}
+				int move = units[i].move;
+				while (1)
+				{
+					//射程範囲に攻撃可能なユニットがいれば攻撃する
+					int unit = GetCanAttackUnit(i);
+					if (unit >= 0)
+					{
+						Battle(i, unit);
+						break;
+					}
+					else
+					{
+						int x = units[i].pos.x;
+						int y = units[i].pos.y;
+						if (x < target[0]) { ++x; }     //プレイヤーが右の時
+						else if (x > target[0]) { --x; }//プレイヤーが左の時
+						else if (y < target[1]) { ++y; }//プレイヤーが下の時
+						else if (y > target[1]) { --y; }//プレイヤーが上の時
+
+						if (IsCanMove(i, x, y, move))
+						{
+							int unit = GetUnit(x, y);
+							//ユニットがいなければコストを減らし移動
+							if (unit < 0)
+							{
+								units[i].pos.x = x;
+								units[i].pos.y = y;
+								move -= jobDesc[units[i].job].moveCosts[cells[units[i].pos.y][units[i].pos.x]];
+							}
+							else
+							{
+								break;
+							}
+						}
+						else
+						{
+							break;
+						}
+					}
+					FlipDisplay();
+					DrawUnit(i);
+					//Sleep(150);
+					getchar();
+				}
+				getchar();
+
+			}
+			FlipDisplay();
+			printf("味方のターン\n");
+			getchar();
+			TurnInit(PLAYER);
+			turn = PLAYER;
 			break;
 		}
 		//カーソルが画面外に来たら端にワープする
 		cursor.pos.x = (MAP_WIDTH + cursor.pos.x) % MAP_WIDTH;
 		cursor.pos.y = (MAP_HEIGHT + cursor.pos.y) % MAP_HEIGHT;
 	}
-	
+
 }
 int main()
 {
 	Initialize();
 	UpDateDraw();
-	
+
 	_getch();
 }
