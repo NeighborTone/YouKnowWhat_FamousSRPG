@@ -262,10 +262,10 @@ bool IsCanAttack(int attack_, int defence_)
 	{
 		return true;
 	}
-	//if (GetUnitsDistance(attack_, defence_) == rangeMax)
-	//{
-	//	return true;
-	//}
+	if (GetUnitsDistance(attack_, defence_) == rangeMax)
+	{
+		return true;
+	}
 	return false;
 }
 
@@ -537,6 +537,10 @@ void Attack(int attack_, int defence_, AttackType type)
 	//‚Ç‚¿‚ç‚©‚ªŽ€‚ñ‚¾ƒ†ƒjƒbƒg‚¾‚Á‚½‚ç‰½‚à‚µ‚È‚¢
 	if (units[attack_].hp <= 0 ||
 		units[defence_].hp <= 0)
+	{
+		return;
+	}
+	if (!IsCanAttack(attack_, defence_))
 	{
 		return;
 	}
