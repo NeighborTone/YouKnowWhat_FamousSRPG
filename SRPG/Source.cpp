@@ -195,8 +195,8 @@ struct UNIT
 constexpr int UNIT_MAX = 21;
 UNIT units[] =
 {
-	//名前		   職業　　　 HP  STR SKI WLV AGI LUC DEF MOV TEAM    WEP
-		{ "マルス", LORD, 18, 5, 3, 5, 7, 7, 7, 7, PLAYER, RAPIRE },
+	//名前		   職業　　　     HP  STR SKI WLV AGI LUC DEF MOV TEAM    WEP
+		{ "マルス",		  LORD,  18, 5,   3,  5,  7,  7,  7,  7, PLAYER, RAPIRE },
 		{ "ジェイガン", PARADIN,  20, 7,   10, 10, 8,  1,  9, 10, PLAYER, IRON_SWORD },
 		{ "カイン",	   S_KINGHT, 18, 7,   5,  6,  7,  2,  7,  9, PLAYER, IRON_SWORD },
 		{ "アベル",	   S_KINGHT, 18, 6,   7,  6,  7,  2,  7,  7, PLAYER, HAND_SPEAR },
@@ -658,7 +658,7 @@ void UpDateDraw()
 		switch (phase)
 		{
 		case SELECT_UNIT:		 printf("ユニットを選択してください。(Eキーで:ターン終了)\n"); break;
-		case SET_MOVE_POSITION:	 printf("移動先を設定してください。\n"); break;
+		case SET_MOVE_POSITION:	 printf("移動先を設定してください。(Qキーで選択しなおせます)\n"); break;
 		case SELECT_ATTACK_UNIT: printf("攻撃対象を選んでください。(自身を選択で待機)\n"); break;
 		}
 		//カーソルと同じ位置にあるオブジェクトの情報を画面に表示
@@ -675,10 +675,20 @@ void UpDateDraw()
 		}
 		switch (_getch())
 		{
-		case 'w': --cursor.pos.y; break;
-		case 's': ++cursor.pos.y; break;
-		case 'a': --cursor.pos.x; break;
-		case 'd': ++cursor.pos.x; break;
+		case 'w': --cursor.pos.y;  break;
+		case 's': ++cursor.pos.y;  break;
+		case 'a': --cursor.pos.x;  break;
+		case 'd': ++cursor.pos.x;  break;
+		case 0x48: --cursor.pos.y; break;
+		case 0x50: ++cursor.pos.y; break;
+		case 0x4b: --cursor.pos.x; break;
+		case 0x4d: ++cursor.pos.x; break;
+		case 0x1b: exit(0);        break;
+		case 'q': 
+			phase = SELECT_UNIT; 
+			memset(fill, 0, sizeof fill);
+			FlipDisplay(); 
+			break;
 			//エンターキーを押したとき
 		case '\r':
 			switch (phase)
@@ -737,10 +747,8 @@ void UpDateDraw()
 						printf("王『おめでとう』\n");
 						getchar();
 						FlipDisplay();
-						printf("王『褒美に死をやろう!』\n");
-						getchar();
-						FlipDisplay();
 						printf("『THE END』\n\a");
+						getchar();
 						exit(0);
 					}
 					//攻撃可能なユニットがいれば攻撃対象を選ぶ
@@ -858,6 +866,7 @@ void UpDateDraw()
 	}
 
 }
+
 int main()
 {
 	Initialize();
