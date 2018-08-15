@@ -342,7 +342,7 @@ bool IsCanMove(int unit_, int x, int y, int movePow)
 	return true;
 }
 //移動可能なセルを塗りつぶす
-void FillCanMoceCells(int unit_, int x, int y, int movePow)
+void FillCanMoveCells(int unit_, int x, int y, int movePow)
 {
 	if (!IsCanMove(unit_, x, y, movePow))
 	{
@@ -357,7 +357,7 @@ void FillCanMoceCells(int unit_, int x, int y, int movePow)
 	{
 		int xx = x + directions[i][0];
 		int yy = y + directions[i][1];
-		FillCanMoceCells(unit_, xx, yy, movePow);
+		FillCanMoveCells(unit_, xx, yy, movePow);
 	}
 }
 
@@ -650,6 +650,169 @@ void Initialize()
 	}
 }
 
+void PlayerMovement()
+{
+	switch (phase)
+	{
+	case SELECT_UNIT:
+	{
+		int unit = GetUnit(cursor.pos.x, cursor.pos.y);
+		if (IsDone())
+		{
+			break;
+		}
+		if (unit < 0)
+		{
+			break;
+		}
+		//あるユニットの座標に対して上下左右に対して塗りつぶしができるか調べ、可能なら塗りつぶす
+		memset(fill, 0, sizeof fill);	//バッファのクリア
+		for (int i = 0; i < DIRECTION_MAX; ++i)
+		{
+			int x = units[unit].pos.x + directions[i][0];
+			int y = units[unit].pos.y + directions[i][1];
+			FillCanMoveCells(unit, x, y, units[unit].move);
+		}
+		//ほかのユニットと重なっていたら塗りつぶしを解除する
+		for (int y = 0; y < MAP_HEIGHT; ++y)
+		{
+			for (int x = 0; x < MAP_WIDTH; ++x)
+			{
+				int unit2 = GetUnit(x, y);
+				if (unit2 >= 0 && fill[y][x])
+				{
+					fill[y][x] = false;
+				}
+			}
+		}
+		//味方のユニットを選択し、移動先を決める
+		if (units[unit].team == PLAYER)
+		{
+			selectedUnit = unit;
+			phase = SET_MOVE_POSITION;
+		}
+
+		break;
+	}
+	case SET_MOVE_POSITION:
+		//塗りつぶされているマスが選択されたらそこに移動する
+		if (fill[cursor.pos.y][cursor.pos.x])
+		{
+			units[selectedUnit].pos.x = cursor.pos.x;
+			units[selectedUnit].pos.y = cursor.pos.y;
+			memset(fill, 0, sizeof fill);
+			//マルスが城についたらエンディング
+			if (cells[units[0].pos.y][units[0].pos.x] == CELL_CASTLE)
+			{
+				FlipDisplay();
+				printf("王『おめでとう』\n");
+				getchar();
+				FlipDisplay();
+				printf("『THE END』\n\a");
+				getchar();
+				exit(0);
+			}
+			//攻撃可能なユニットがいれば攻撃対象を選ぶ
+			if (GetCanAttackUnit(selectedUnit) >= 0)
+			{
+				phase = SELECT_ATTACK_UNIT;
+			}
+			else
+			{
+				units[selectedUnit].done = true;
+				phase = SELECT_UNIT;
+			}
+		}
+		break;
+	case SELECT_ATTACK_UNIT:
+		//自身を選択していれば待機
+		if (cursor.pos.x == units[selectedUnit].pos.x &&
+			cursor.pos.y == units[selectedUnit].pos.y)
+		{
+			units[selectedUnit].done = true;
+			phase = SELECT_UNIT;
+		}
+		else
+		{
+			//選択したユニットを取得する
+			int unit = GetUnit(cursor.pos.x, cursor.pos.y);
+			if (IsCanAttack(selectedUnit, unit))
+			{
+				Battle(selectedUnit, unit);
+				units[selectedUnit].done = true;
+				phase = SELECT_UNIT;
+
+			}
+		}
+		break;
+	}
+}
+
+void EnemyMovement()
+{
+	for (int i = UNIT_MAX - 1; i >= 0; --i)
+	{
+		if (units[i].team != ENEMY || units[i].hp <= 0)
+		{
+			continue;
+		}
+		//敵はマルスを追いかける
+		int target[2] = { units[0].pos.x,units[0].pos.y };
+		//ガザックは城を目指す
+		if (i == 7)
+		{
+			target[0] = 4;
+			target[1] = 4;
+		}
+		int move = units[i].move;
+		while (1)
+		{
+			//射程範囲に攻撃可能なユニットがいれば攻撃する
+			int unit = GetCanAttackUnit(i);
+			if (unit >= 0)
+			{
+				Battle(i, unit);
+				break;
+			}
+			else
+			{
+				int x = units[i].pos.x;
+				int y = units[i].pos.y;
+				if (x < target[0]) { ++x; }     //プレイヤーが右の時
+				else if (x > target[0]) { --x; }//プレイヤーが左の時
+				else if (y < target[1]) { ++y; }//プレイヤーが下の時
+				else if (y > target[1]) { --y; }//プレイヤーが上の時
+
+				if (IsCanMove(i, x, y, move))
+				{
+					int unit = GetUnit(x, y);
+					//ユニットがいなければコストを減らし移動
+					if (unit < 0)
+					{
+						units[i].pos.x = x;
+						units[i].pos.y = y;
+						move -= jobDesc[units[i].job].moveCosts[cells[units[i].pos.y][units[i].pos.x]];
+					}
+					else
+					{
+						break;
+					}
+				}
+				else
+				{
+					break;
+				}
+			}
+			FlipDisplay();
+			DrawUnit(i);
+			//Sleep(150);
+			getchar();
+		}
+		getchar();
+
+	}
+}
+
 void UpDateDraw()
 {
 	while (1)
@@ -691,100 +854,7 @@ void UpDateDraw()
 			break;
 			//エンターキーを押したとき
 		case '\r':
-			switch (phase)
-			{
-			case SELECT_UNIT:
-			{
-				int unit = GetUnit(cursor.pos.x, cursor.pos.y);
-				if (IsDone())
-				{
-					break;
-				}
-				if (unit < 0)
-				{
-					break;
-				}
-				//あるユニットの座標に対して上下左右に対して塗りつぶしができるか調べ、可能なら塗りつぶす
-				memset(fill, 0, sizeof fill);	//バッファのクリア
-				for (int i = 0; i < DIRECTION_MAX; ++i)
-				{
-					int x = units[unit].pos.x + directions[i][0];
-					int y = units[unit].pos.y + directions[i][1];
-					FillCanMoceCells(unit, x, y, units[unit].move);
-				}
-				//ほかのユニットと重なっていたら塗りつぶしを解除する
-				for (int y = 0; y < MAP_HEIGHT; ++y)
-				{
-					for (int x = 0; x < MAP_WIDTH; ++x)
-					{
-						int unit2 = GetUnit(x, y);
-						if (unit2 >= 0 && fill[y][x])
-						{
-							fill[y][x] = false;
-						}
-					}
-				}
-				//味方のユニットを選択し、移動先を決める
-				if (units[unit].team == PLAYER)
-				{
-					selectedUnit = unit;
-					phase = SET_MOVE_POSITION;
-				}
-			
-				break;
-			}
-			case SET_MOVE_POSITION:
-				//塗りつぶされているマスが選択されたらそこに移動する
-				if (fill[cursor.pos.y][cursor.pos.x])
-				{
-					units[selectedUnit].pos.x = cursor.pos.x;
-					units[selectedUnit].pos.y = cursor.pos.y;
-					memset(fill, 0, sizeof fill);
-					//マルスが城についたらエンディング
-					if (cells[units[0].pos.y][units[0].pos.x] == CELL_CASTLE)
-					{
-						FlipDisplay();
-						printf("王『おめでとう』\n");
-						getchar();
-						FlipDisplay();
-						printf("『THE END』\n\a");
-						getchar();
-						exit(0);
-					}
-					//攻撃可能なユニットがいれば攻撃対象を選ぶ
-					if (GetCanAttackUnit(selectedUnit) >= 0)
-					{
-						phase = SELECT_ATTACK_UNIT;
-					}
-					else
-					{
-						units[selectedUnit].done = true;
-						phase = SELECT_UNIT;
-					}
-				}
-				break;
-			case SELECT_ATTACK_UNIT:
-				//自身を選択していれば待機
-				if (cursor.pos.x == units[selectedUnit].pos.x &&
-					cursor.pos.y == units[selectedUnit].pos.y)
-				{
-					units[selectedUnit].done = true;
-					phase = SELECT_UNIT;
-				}
-				else
-				{
-					//選択したユニットを取得する
-					int unit = GetUnit(cursor.pos.x, cursor.pos.y);
-					if (IsCanAttack(selectedUnit, unit))
-					{
-						Battle(selectedUnit, unit);
-						units[selectedUnit].done = true;
-						phase = SELECT_UNIT;
-
-					}
-				}
-				break;
-			}
+			PlayerMovement();
 			break;
 		case 'e':
 			turn = ENEMY;
@@ -792,67 +862,8 @@ void UpDateDraw()
 			printf("敵のターン\n");
 			TurnInit(ENEMY);
 			getchar();
-			for (int i = UNIT_MAX - 1; i >= 0; --i)
-			{
-				if (units[i].team != ENEMY || units[i].hp <= 0)
-				{
-					continue;
-				}
-				//敵はマルスを追いかける
-				int target[2] = { units[0].pos.x,units[0].pos.y };
-				//ガザックは城を目指す
-				if (i == 7)
-				{
-					target[0] = 4;
-					target[1] = 4;
-				}
-				int move = units[i].move;
-				while (1)
-				{
-					//射程範囲に攻撃可能なユニットがいれば攻撃する
-					int unit = GetCanAttackUnit(i);
-					if (unit >= 0)
-					{
-						Battle(i, unit);
-						break;
-					}
-					else
-					{
-						int x = units[i].pos.x;
-						int y = units[i].pos.y;
-						if (x < target[0]) { ++x; }     //プレイヤーが右の時
-						else if (x > target[0]) { --x; }//プレイヤーが左の時
-						else if (y < target[1]) { ++y; }//プレイヤーが下の時
-						else if (y > target[1]) { --y; }//プレイヤーが上の時
+			EnemyMovement();
 
-						if (IsCanMove(i, x, y, move))
-						{
-							int unit = GetUnit(x, y);
-							//ユニットがいなければコストを減らし移動
-							if (unit < 0)
-							{
-								units[i].pos.x = x;
-								units[i].pos.y = y;
-								move -= jobDesc[units[i].job].moveCosts[cells[units[i].pos.y][units[i].pos.x]];
-							}
-							else
-							{
-								break;
-							}
-						}
-						else
-						{
-							break;
-						}
-					}
-					FlipDisplay();
-					DrawUnit(i);
-					//Sleep(150);
-					getchar();
-				}
-				getchar();
-
-			}
 			FlipDisplay();
 			printf("味方のターン\n");
 			getchar();
